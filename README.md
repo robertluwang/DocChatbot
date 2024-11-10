@@ -8,3 +8,11 @@ DocChatbot is a Retrieval-Augmented Generation (RAG) chatbot designed for managi
 - **Vector Indexing with FAISS**: Utilizes FAISS to create efficient and scalable vector indexes
 - **Query Handling**: Accepts natural language queries to search through indexed document sets
 - **Session Logging**: Logs user interactions for reference and analysis
+
+## Tech Stack
+
+- Python
+- Langchain file uploader
+- Google Gemini API
+- Faiss indexing
+- Streamlit 
