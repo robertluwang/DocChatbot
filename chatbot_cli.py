@@ -1,4 +1,6 @@
 # chatbot_cli.py
+
+import json
 from doc_chatbot import DocChatbot
 
 class DocChatbotCLI:
@@ -21,7 +23,8 @@ class DocChatbotCLI:
         load_log_name = input("Enter the name of the chat log to load (or press Enter to skip): ")
         if load_log_name:
             self.chatbot.load_chat_log(load_log_name)
-        
+            self.chatbot.print_chat_log() 
+
         index_name = input("Index name: ")
         query = input("Your query: ")
         system_prompt = input("System Prompt: ")
@@ -31,19 +34,25 @@ class DocChatbotCLI:
         print(f"### Response:\n\n{response.content}")
 
     def query_noindex(self):
-            doc_folder = input("Enter doc folder path: ")
-            if doc_folder:
-                loaded_docs = self.chatbot.load_documents(doc_folder)
-                self.chatbot.loaded_docs = loaded_docs  # Store in DocChatbot instance
-                if self.chatbot.debug:
-                    for met in self.chatbot.loaded_docs:
-                        metadata = met.metadata  # Extract metadata
-                        print(f"\nloaded_docs for query_noindex: {metadata}")
-                print("Documents loaded successfully!")
-            user_query = input("Enter your query:")
-            if user_query:
-                response = self.chatbot.query_documents(user_query, documents=self.chatbot.loaded_docs)
-                print(f"### Response:\n\n{response.content}")
+        # Load chat log before starting the query
+        load_log_name = input("Enter the name of the chat log to load (or press Enter to skip): ")
+        if load_log_name:
+            self.chatbot.load_chat_log(load_log_name)
+            self.chatbot.print_chat_log() 
+
+        doc_folder = input("Enter doc folder path: ")
+        if doc_folder:
+            loaded_docs = self.chatbot.load_documents(doc_folder)
+            self.chatbot.loaded_docs = loaded_docs  # Store in DocChatbot instance
+            if self.chatbot.debug:
+                for met in self.chatbot.loaded_docs:
+                    metadata = met.metadata  # Extract metadata
+                    print(f"\nloaded_docs for query_noindex: {metadata}")
+            print("Documents loaded successfully!")
+        user_query = input("Enter your query:")
+        if user_query:
+            response = self.chatbot.query_documents(user_query, documents=self.chatbot.loaded_docs)
+            print(f"### Response:\n\n{response.content}")
         
     def main_menu(self):
         while True:

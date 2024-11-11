@@ -1,6 +1,8 @@
 # doc_chatbot.py
 
 import os
+import re
+from datetime import datetime
 import shutil
 import json
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
@@ -248,7 +250,9 @@ class DocChatbot:
         docs = vector_store.similarity_search(query)
 
         if self.debug:
-            print(f"\nFaiss similarity search result (first 3):\n {docs[:3]}")
+            for met in docs:
+                metadata = met.metadata  # Extract metadata
+                print(f"\nFaiss similarity search result: {metadata}")
 
         # Prepare the final query with system and user prompts if provided
         final_query = query
@@ -285,23 +289,31 @@ class DocChatbot:
 
         return response
 
-    def save_chat_log(self, log_name):
+    # add log_name empty use case
+    def save_chat_log(self, log_name=""):
         """Save the current chat session log to disk."""
         log_dir = "chat_logs"
         os.makedirs(log_dir, exist_ok=True)
+        
+        # Generate a log file name with a timestamp if log_name is empty
+        if not log_name:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            log_name = f"chat_log_{timestamp}"
+        
         log_path = os.path.join(log_dir, f"{log_name}.json")
-
+        
         # Convert session log to a JSON-serializable format
         serializable_log = []
         for entry in self.session_log:
             serializable_log.append({
-                "user": str(entry["user"]),
-                "bot": str(entry["bot"])
+                "user": str(entry.get("user", "")),
+                "bot": str(entry.get("bot", ""))
             })
 
         with open(log_path, "w") as log_file:
             json.dump(serializable_log, log_file)
         print(f"Chat log saved as '{log_path}'.")
+        return log_path
 
     def load_chat_log(self, log_name):
         """Load a previous chat session log from disk."""
@@ -314,6 +326,24 @@ class DocChatbot:
             print(f"Loaded chat log from '{log_name}'.")
         else:
             print(f"Chat log '{log_name}' not found.")
+
+    # add pretty print for chat log
+    def print_chat_log(self):
+        for chat in self.session_log:
+            # Extract the content from the 'bot' field using regular expression
+            bot_message_match = re.search(r'content="(.*?)"\sadditional_kwargs=', chat['bot'])
+            if bot_message_match:
+                bot_message_content = bot_message_match.group(1)
+
+                # Replace '\\n' with '\n' for Markdown format
+                bot_message_markdown = bot_message_content.replace('\\n', '\n')
+
+                # Print in the desired format with bot response as Markdown
+                print(f"user: {chat['user']}")
+                print("bot:")
+                print(bot_message_markdown)
+                print()  # Print a newline for separation between chat entries
+
 
 
 

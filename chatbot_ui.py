@@ -9,7 +9,12 @@ class ChatbotUI:
 
     def start_ui(self):
         st.sidebar.title("DocChatbot Settings")
+        st.sidebar.write("/q to stop and save chat log.")
 
+        # Initialize session state messages if not already done
+        if 'messages' not in st.session_state:
+            st.session_state.messages = []  # Each message is a dict {'role': 'user'/'bot', 'content': message}
+ 
         # Initialize session state for existing indexes if not already set
         if "existing_indexes" not in st.session_state:
             st.session_state["existing_indexes"] = []
@@ -32,11 +37,12 @@ class ChatbotUI:
                         for met in st.session_state["loaded_docs"]:
                             metadata = met.metadata  # Extract metadata
                             print(f"\nloaded_docs after Upload button submit: {metadata}")
-                    st.success("Documents loaded successfully!")
+                    st.sidebar.success("Documents loaded successfully!")
                 except Exception as e:
-                    st.error(f"Error loading documents: {e}")
+                    st.sidebar.error(f"Error loading documents: {e}")
 
             # Main screen for user queries (only if documents are loaded)
+            st.subheader("Query long content without index")
             if "loaded_docs" in st.session_state and st.session_state["loaded_docs"]:
                 if self.doc_chatbot.debug:
                     for met in st.session_state["loaded_docs"]:
@@ -44,17 +50,37 @@ class ChatbotUI:
                         print(f"\nloaded_docs before calling query_documents: {metadata}")
                 user_query = st.text_input("Enter your query:")
                 if user_query:
-                    with st.spinner("Processing your query..."):
-                        try:
-                            if self.doc_chatbot.debug:
-                                for met in st.session_state["loaded_docs"]:
-                                    metadata = met.metadata  # Extract metadata
-                                    print(f"\nProcessing query with documents: {metadata}")
-                            # Query using the loaded docs from session state
-                            response = self.doc_chatbot.query_documents(user_query, documents=st.session_state["loaded_docs"])
-                            st.markdown(f"### Response:\n\n{response.content}")
-                        except Exception as e:
-                            st.error(f"Error processing query: {e}")
+                    if user_query.lower() == "/q":
+                        save_log_name = st.text_input("Enter a name to save the chat log (or skip for default name): ")
+                        if st.button("Save"):
+                            if save_log_name:
+                                log_path = self.doc_chatbot.save_chat_log(save_log_name)
+                            else:
+                                log_path = self.doc_chatbot.save_chat_log()
+                            st.write(f'Chat history saved to {log_path}')
+                            st.write('Good bye!')
+                            st.stop()
+                    else:
+                        with st.spinner("Processing your query..."):
+                            try:
+                                if self.doc_chatbot.debug:
+                                    for met in st.session_state["loaded_docs"]:
+                                        metadata = met.metadata  # Extract metadata
+                                        print(f"\nProcessing query with documents: {metadata}")
+                                # Query using the loaded docs from session state
+                                response = self.doc_chatbot.query_documents(user_query, documents=st.session_state["loaded_docs"])
+                                st.markdown(f"### Response:\n\n{response.content}")
+
+                                self.doc_chatbot.session_log.append({'role': 'bot', 'content': response.content})
+                                st.session_state.messages.append({'role': 'bot', 'content': response.content})
+
+                                st.subheader("Chat History")
+                                for message in st.session_state.messages:
+                                    with st.chat_message(message["role"]):
+                                        st.markdown(message["content"])
+
+                            except Exception as e:
+                                st.error(f"Error processing query: {e}")
             else:
                 st.info("Please upload documents to proceed with querying.")
 
@@ -70,9 +96,9 @@ class ChatbotUI:
                         # Index documents and update existing indexes list in session state
                         self.doc_chatbot.index_documents(doc_folder, index_name)
                         st.session_state["existing_indexes"] = self.doc_chatbot.list_index()
-                        st.success("Documents indexed successfully!")
+                        st.sidebar.success("Documents indexed successfully!")
                     except Exception as e:
-                        st.error(f"Error indexing documents: {e}")
+                        st.sidebar.error(f"Error indexing documents: {e}")
                 else:
                     st.warning("Please provide both a folder path and an index name.")
 
@@ -106,15 +132,43 @@ class ChatbotUI:
                 selected_index = st.selectbox("Select an existing index:", st.session_state["existing_indexes"])
 
                 user_query = st.text_input("Enter your query:")
+
+                self.doc_chatbot.session_log.append({'role': 'user', 'content': user_query})
+                st.session_state.messages.append({'role': 'user', 'content': user_query})
+
                 if user_query:
-                    with st.spinner("Processing your query..."):
-                        try:
-                            response = self.doc_chatbot.query_indexed_documents(user_query, selected_index)
-                            st.markdown(f"### Response:\n\n{response.content}")
-                        except Exception as e:
-                            st.error(f"Error querying index: {e}")
+                    if user_query.lower() == "/q":
+                        save_log_name = st.text_input("Enter a name to save the chat log (or skip for default name): ")
+                        if st.button("Save"):
+                            if save_log_name:
+                                log_path = self.doc_chatbot.save_chat_log(save_log_name)
+                            else:
+                                log_path = self.doc_chatbot.save_chat_log()
+                            st.write(f'Chat history saved to {log_path}')
+                            st.write('Good bye!')
+                            st.stop()
+                    else:
+                        with st.spinner("Processing your query..."):
+                            try:
+                                response = self.doc_chatbot.query_indexed_documents(user_query, selected_index)
+                                st.markdown(f"### Response:\n\n{response.content}")
+                                self.doc_chatbot.session_log.append({'role': 'bot', 'content': response.content})
+                                st.session_state.messages.append({'role': 'bot', 'content': response.content})
+
+                                st.subheader("Chat History")
+                                for message in st.session_state.messages:
+                                    with st.chat_message(message["role"]):
+                                        st.markdown(message["content"])
+
+                            except Exception as e:
+                                st.error(f"Error querying index: {e}")
             else:
                 st.info("Please create or select an index to proceed with querying.")
+
+
+        
+
+
 
 
 
